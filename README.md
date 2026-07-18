@@ -2,6 +2,8 @@
 
 A minimal Python 3.12 example of an asynchronous LangChain LCEL question chain.
 
+[Implementation plan and verification evidence](IMPLEMENTATION_PLAN.md)
+
 ## Setup
 
 Install the project and development tools with [uv](https://docs.astral.sh/uv/):
