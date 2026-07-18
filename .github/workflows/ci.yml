@@ -1,59 +1,21 @@
-name: Bootstrap exact local history
+name: CI
 
 on:
   push:
-    branches: [main]
-
-permissions:
-  contents: write
+  pull_request:
 
 jobs:
-  bootstrap:
+  quality:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          fetch-depth: 0
+          python-version: "3.12"
       - uses: astral-sh/setup-uv@v7
-        with:
-          version: "0.11.20"
-          enable-cache: false
-      - name: Recover history archive
-        env:
-          ARCHIVE_SHA256: 240f7ce188e8908d3eb628934c32bb9ae17f77e4043bb1add0fb2e73a467131a
-        run: |
-          git show HEAD^:.github/workflows/ci.yml > "$RUNNER_TEMP/bootstrap.yml"
-          python - <<'PY'
-          import os
-          import subprocess
-          from pathlib import Path
-
-          text = Path(os.environ["RUNNER_TEMP"], "bootstrap.yml").read_text()
-          encoded = text.split("          HISTORY_B64: |\n", 1)[1].split("        run: |\n", 1)[0]
-          encoded = "".join(line.strip() for line in encoded.splitlines())
-          archive = Path(os.environ["RUNNER_TEMP"], "history.fi.xz")
-          archive.write_bytes(__import__("base64").b64decode(encoded))
-          subprocess.run(["sha256sum", "--check"], input=f"{os.environ['ARCHIVE_SHA256']}  {archive}\n", text=True, check=True)
-          PY
-      - name: Import history without lockfile
-        run: xz --decompress --stdout "$RUNNER_TEMP/history.fi.xz" | git fast-import --force --quiet
-      - name: Recreate exact lockfile blob
-        run: |
-          mkdir -p "$RUNNER_TEMP/lock"
-          git show refs/heads/main:pyproject.toml > "$RUNNER_TEMP/lock/pyproject.toml"
-          uv lock --project "$RUNNER_TEMP/lock"
-          test "$(git hash-object "$RUNNER_TEMP/lock/uv.lock")" = "3f3856df47b95a941c223365d3d6c40c1253ef84"
-          git hash-object -w "$RUNNER_TEMP/lock/uv.lock" > "$RUNNER_TEMP/lock-blob"
-      - name: Rewrite commits with exact lockfile
-        run: |
-          lock_blob="$(cat "$RUNNER_TEMP/lock-blob")"
-          FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch --force \
-            --index-filter "git update-index --add --cacheinfo 100644,$lock_blob,uv.lock" \
-            -- refs/heads/main
-      - name: Verify exact local head and tree
-        run: |
-          test "$(git rev-parse refs/heads/main)" = "475d7156bdc0c7846a26c01d04a39517368a2e40"
-          git reset --hard refs/heads/main
-          test "$(git ls-tree -r refs/heads/main | wc -l | tr -d ' ')" = "21"
-      - name: Publish exact main history
-        run: git push --force origin refs/heads/main:refs/heads/main
+      - run: uv sync --all-groups
+      - run: uv run ruff format --check .
+      - run: uv run ruff check .
+      - run: uv run pyright
+      - run: uv run python -m pytest
+      - run: uv run python -m build

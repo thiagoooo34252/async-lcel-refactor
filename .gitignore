@@ -1,0 +1,10 @@
+.atl/
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.pyright/
+build/
+dist/
+*.egg-info/
