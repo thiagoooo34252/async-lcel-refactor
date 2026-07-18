@@ -9,6 +9,7 @@ def test_keyless_root_module_reports_configuration_error() -> None:
     environment = os.environ.copy()
     environment.pop("OPENAI_API_KEY", None)
     environment.pop("OPENAI_MODEL", None)
+    environment["PYTHON_DOTENV_DISABLED"] = "1"
 
     result = subprocess.run(
         ["uv", "run", "--offline", "python", "-m", "async_lcel_question_chain"],

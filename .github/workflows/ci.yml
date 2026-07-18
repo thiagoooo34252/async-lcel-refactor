@@ -7,6 +7,9 @@ on:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ""
+      PYTHON_DOTENV_DISABLED: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
